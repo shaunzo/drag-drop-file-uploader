@@ -1,56 +1,32 @@
-let dropArea = document.getElementById('drop-area');
-let filesDone = 0;
-let filesToDo = 0;
-let progressBar = document.getElementById('progress-bar');
-let uploadProgress = [];
+const uploadFilesList = document.getElementById('uploadFilesList');
+const filesUploadedEl = document.getElementById('filesUploadedEl');
+const statusTextEl = document.getElementById('statusText');
+const uploadBtn = document.querySelector('#uploadBtn');
+const errorMessages = document.querySelector('#errorMessages');
+const maxUploadSize = 5242880; // 5mb
+const uploadServerFile = 'uploadHandling.php';
+const deleteServerFile = 'deleteFile.php';
 
-/**
- * We’ll start off with adding handlers to all the events to prevent
- * default behaviors and stop the events from bubbling up any higher than necessary
- */
+let dropArea = document.getElementById('drop-area');
+let uploadedSizeTotal = 0;
+
 ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
     dropArea.addEventListener(eventName, preventDefaults, false);
 });
 
-/**
- * Now let’s add an indicator to let the user know that they have indeed dragged the
- * item over the correct area by using CSS to change the color of the border color of
- * the drop area. The styles should already be there under the #drop-area.highlight selector,
- * so let’s use JS to add and remove that highlight class when necessary.
- */
-
 ['dragenter', 'dragover'].forEach(eventName => {
-dropArea.addEventListener(eventName, highlight, false);
-})
-
-;['dragleave', 'drop'].forEach(eventName => {
-dropArea.addEventListener(eventName, unhighlight, false);
+    dropArea.addEventListener(eventName, highlight, false);
 });
 
-/**
- * Now all we need to do is figure out what to do when some files are dropped:
- * 
- * 1. Demonstrates how to get the data for the files that were dropped.
- * 2. Gets us to the same place that the file input was at with its onchange
- *    handler: waiting for handleFiles.
- * 
- */
- dropArea.addEventListener('drop', handleDrop, false);
+['dragleave', 'drop'].forEach(eventName => {
+    dropArea.addEventListener(eventName, unhighlight, false);
+});
 
- /**
-  * Image Preview
-  * There are a couple of ways you could do this: you could wait until after the image
-  * has been uploaded and ask the server to send the URL of the image, but that means you 
-  * need to wait and images can be pretty large sometimes. The alternative — which we’ll be exploring today — is
-  * to use the FileReader API on the file data we received from the drop event. This is asynchronous, and you could
-  * alternatively use FileReaderSync, but we could be trying to read several large files in a row, so this could block
-  * the thread for quite a while and really ruin the experience. So let’s create a previewFile function and see how it works:
-  */
-
+dropArea.addEventListener('drop', handleDrop, false);
 
 function preventDefaults (e) {
-e.preventDefault();
-e.stopPropagation();
+    e.preventDefault();
+    e.stopPropagation();
 }
 
 function highlight(e) {
@@ -70,126 +46,161 @@ function handleDrop(e) {
      * handleFiles, we’ll need to convert it to an array in order to iterate
      * over it more easily:
      */
-
-    console.log(files);
-    uploadFiles(files);
+    handleFiles(files);
 }
 
 function handleFiles(files) {
-    files = [...files];
-    // initializeProgress(files.length);
-    uploadFiles(files);
+    const inptFiles = [...files];
+
+    inptFiles.forEach(file => {
+        const formData = new FormData();
+        if (file.size + uploadedSizeTotal > maxUploadSize) {
+            showMaxUploadError();
+        } else {
+            formData.append('uploadedFile[]', file);
+            uploadFile(formData, file.name);
+        }
+    });
 }
 
-function uploadFiles(filesArray) {
-    const url = 'uploadHandling.php';
-    const xhr = new XMLHttpRequest();
-    const formData = new FormData();
-
-    for(const file of filesArray) {
-        formData.append('myFiles[]', file);
-    }
-
-
+function uploadFile(formData, fileName) {
     
-    xhr.open('post', url);
+    const xhr = new XMLHttpRequest();
+    const fileEl = createFileProgressBlock(fileName);
+    const progressBar = fileEl.querySelector('progress');
+    let currentFileSize = 0;
+    uploadFilesList.appendChild(fileEl);
+    xhr.open('post', uploadServerFile);
 
     xhr.addEventListener('loadstart', (e) => {
-        console.log('---------------------LOAD START-------------------', e);
+        uploadBtn.classList.add('disabled');
+        statusTextEl.innerText = 'Uploading...';
     });
     
     xhr.upload.addEventListener('progress', (e) => {
-        console.log(`Uploaded ${e.loaded} of ${e.total} bytes`, e);
-    });
+        progressBar.max = e.total;
+        progressBar.value = e.loaded;
+        
+        currentFileSize = e.total; 
 
+        if(!uploadBtn.classList.contains('disabled')) {
+            uploadBtn.classList.add('disabled');
+        }
+    });
+    
     xhr.addEventListener('loadend', (e) => {
-        console.log('---------------------LOAD END-------------------', e);
+        uploadFilesList.removeChild(fileEl);
+        uploadBtn.classList.remove('disabled');
+        
+        uploadedSizeTotal += currentFileSize;
+        statusTextEl.innerText = `Uploaded ${formatBytes(uploadedSizeTotal)} of max ${formatBytes(maxUploadSize)}`;
+        
+        const uploadedFileEl = createUploadedFileBlock(fileName, currentFileSize);
+        filesUploadedEl.appendChild(uploadedFileEl);
     });
 
     xhr.addEventListener('error', (e) => {
-        console.log('---------------------ERROR-------------------', e);
+        uploadFilesList.innerHTML = '<div>Error uploading your files!</div>';
+        uploadBtn.classList.remove('disabled');
     });
 
     xhr.send(formData);
+}
+
+const showMaxUploadError = () => {
+    errorMessages.innerText = `Sorry, you are not allowed to upload more than ${formatBytes(maxUploadSize)}`;
+    setTimeout(() => {
+        errorMessages.innerText = '';
+    }, 3000);
+}
+
+const createFileProgressBlock = (fileName) => {
+    const fileBlock = document.createElement('div');
+    fileBlock.classList.add('fileProgressBlock');
+
+    const fileBlock_progressBar = document.createElement('progress');
+    const fileBlockId = Math.floor(1000 + Math.random() * 9000);
+    fileBlock_progressBar.id = fileBlockId;
+    fileBlock_progressBar.name = fileBlockId;
+    fileBlock_progressBar.value = 0;
+
+    const fileBlock_progressBar_label = document.createElement('label');
+    fileBlock_progressBar_label.innerText = fileName;
+    fileBlock_progressBar_label.htmlFor = fileBlockId;
+
+    fileBlock.appendChild(fileBlock_progressBar_label);
+    fileBlock.appendChild(fileBlock_progressBar);
+
+    return fileBlock;
+}
+
+const createUploadedFileBlock = (fileName, bytes) => {
+    const fileBlock = document.createElement('div');
+    fileBlock.classList.add('file');
+    fileBlock.setAttribute('data-file', fileName);
+    fileBlock.setAttribute('data-size', bytes);
+
+    const name = document.createElement('div');
+    name.classList.add('name');
+    name.innerText = fileName;
+
+    const deleteFile = document.createElement('div');
+    deleteFile.classList.add('delete');
+    deleteFile.innerHTML = '<img src="bin.png" alt="Delete">';
+    deleteFile.setAttribute('data-file', fileName);
+    deleteFile.querySelector('img').setAttribute('data-file', fileName);
+    deleteFile.addEventListener('click', removeFile, true);
+
+    fileBlock.appendChild(name);
+    fileBlock.appendChild(deleteFile);
+
+    return fileBlock;
+}
+
+const removeFile = (e) => {
+    const fileToDelete = e.target.getAttribute('data-file');
+    const xhr = new XMLHttpRequest();
+    const fileEl = filesUploadedEl.querySelector(`div[data-file="${fileToDelete}"]`);
+    const icon = fileEl.querySelector('img');
+    const size = fileEl.getAttribute('data-size');
+
+    xhr.open('GET', `${deleteServerFile}?file=${fileToDelete}`, true );
     
 
-
-    // xhr.onprogress = (e) => {
-    //     console.log('LOADING', xhr.readyState, e);
-    // }
-
-    // xhr.onload = (e) => {
-    //     console.log('READY', xhr.readyState, xhr.status, e);
-    //     if(e.target.status !== 200) {
-    //         console.error(e.target.responseText);
-    //     }
-    // }
-
-    // xhr.addEventListener('readystatechange', (e) => {
-    //     if(xhr.readyState == 4 && xhr.status == 200) {
-    //         console.log('Done with upload!!!');
-    //     } else if (xhr.readyState == 4 && xhr.status != 200) {
-    //         console.error(`Error uploading file ${xhr.status}`);
-    //         return;
-    //     }
-    // });
-
-  
-    // formData.append('file', file);
-    // xhr.send(formData);
-  
-    // fetch(url, {
-    //   method: 'POST',
-    //   body: formData
-    // })
-    // .then(progressDone)
-
-    // .catch(() => { /* Error. Inform the user */ })
-}
-
-
-/**
- * Here we create a new FileReader and call readAsDataURL on it with
- * the File object. As mentioned, this is asynchronous, so we need to add an
- * onloadend event handler in order to get the result of the read. We then use
- * the base 64 data URL as the src for a new image element and add it to the gallery
- * element. There are only two things that need to be done to make this work now:
- * add the gallery element, and make sure previewFile is actually called.
- */
-
-function previewFile(file) {
-    let reader = new FileReader()
-    reader.readAsDataURL(file)
-    reader.onloadend = function() {
-      let img = document.createElement('img')
-      img.src = reader.result
-      document.getElementById('gallery').appendChild(img)
+    xhr.onloadstart = () => {
+        icon.src = 'processing.gif';
+        statusTextEl.innerText = 'Removing file...'
     }
-}
 
-
-/**
- * When we start uploading, initializeProgress will be called to reset the progress bar.
- * Then, with each completed upload, we’ll call progressDone to increment the number of
- * completed uploads and update the progress bar to show the current progress. So let’s call
- * these functions by updating a couple of old functions
-**/
-
-function initializeProgress(numfiles) {
-    let filesCount = numfiles;
-    progressBar.value = 0;
-    uploadProgress = [];
-
-    for(let i = filesCount; i > 0; i--) {
-        uploadProgress.push(0)
+    xhr.onloadend = () => {
+        if(xhr.status === 200) {
+            filesUploadedEl.removeChild(fileEl);
+            uploadedSizeTotal -= size;
+            uploadedSizeTotal === 0 ? statusTextEl.innerText = '' : statusTextEl.innerText = `Uploaded ${formatBytes(uploadedSizeTotal)} of max ${formatBytes(maxUploadSize)}`;
+        }
     }
+
+    xhr.send("file=" + fileToDelete);
 }
-  
-function updateProgress(fileNumber, percent) {
-    // filesDone++
-    // progressBar.value = filesDone / filesToDo * 100
-    uploadProgress[fileNumber] = percent;
-    let total = uploadProgress.reduce((tot, curr) => tot + curr, 0) / uploadProgress.length;
-    progressBar.value = total;
-  
+
+const formatBytes = (bytes) => {
+    const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB']
+    if (bytes === 0) return 'n/a'
+    const i = parseInt(Math.floor(Math.log(bytes) / Math.log(1024)), 10)
+    if (i === 0) return `${bytes} ${sizes[i]}`
+    return `${(bytes / (1024 ** i)).toFixed(1)} ${sizes[i]}`
+}
+
+const getFileNames = () => {
+    const result = [];
+
+    const resultElements = filesUploadedEl.querySelectorAll('.file');
+
+    if(resultElements.length > 0) {
+        resultElements.forEach(i => {
+            result.push(i.getAttribute('data-file'));
+        });
+    }
+
+    return result;
 }

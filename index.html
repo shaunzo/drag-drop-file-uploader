@@ -13,12 +13,14 @@
 
     <div id="drop-area">
         <form class="my-form">
-            <p>Upload multiple files with the file dialog or by dragging and files onto the dashed region</p>
+            <p>Drag your files onto the dashed region or click below to upload. (Max 5MB)</p>
             <input type="file" id="fileElem" multiple accept='image/*' onchange='handleFiles(this.files)'>
-            <label class="button" for="fileElem">Select some files</label>
+            <label id="uploadBtn" class="button" for="fileElem">Add file(s)</label>
         </form>
-        <progress id="progress-bar" max=100 value=0></progress>
-        <div id="gallery"></div>
+        <div id="filesUploadedEl"></div>
+        <div id="uploadFilesList"></div>
+        <div id="statusText"></div>
+        <div id="errorMessages"></div>
     </div>
 
     <script src="scripts.js"></script>

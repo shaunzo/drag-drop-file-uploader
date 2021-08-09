@@ -39,6 +39,11 @@
     border: 1px solid #ccc;
   }
 
+  .button.disabled {
+    pointer-events: none;
+    opacity: 0.3;
+  }
+
   .button:hover {
     background: #ddd;
   }
@@ -47,8 +52,48 @@
     display: none;
   }
 
-  #progress-bar {
+  progress {
     width: 100%;
     height: 30px;
   }
   
+  progress[value] {
+    /* Reset the default appearance */
+    -webkit-appearance: none;
+    appearance: none;
+    color: greenyellow;
+  }
+
+  progress[value]::-webkit-progress-bar {
+    background-color: #eee;
+  }
+
+  #errorMessages {
+    color: red;
+  }
+  
+
+  #filesUploadedEl {
+    display: flex;
+    flex-direction: column;
+  }
+
+  #filesUploadedEl .file {
+    padding: 10px;
+    display: flex;
+    flex-direction: row;
+    border-top: 1px solid #ccc;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  #filesUploadedEl .file .delete {
+    background-color: red;
+    padding: 10px;
+    flex: 0 0 auto;
+    cursor: pointer;
+  }
+
+  #filesUploadedEl .file .delete img {
+    width: 20px;
+  }
