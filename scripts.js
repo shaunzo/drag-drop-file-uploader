@@ -52,6 +52,16 @@ function handleDrop(e) {
 function handleFiles(files) {
     const inptFiles = [...files];
 
+    let totalInputFileSize = 0;
+    inptFiles.forEach((i) => {
+        totalInputFileSize += i.size;
+    });
+
+    if(totalInputFileSize > maxUploadSize) {
+        showMaxUploadError();
+        return;
+    }
+
     inptFiles.forEach(file => {
         const formData = new FormData();
         if (file.size + uploadedSizeTotal > maxUploadSize) {

@@ -11,17 +11,20 @@
 
     <h1>File Uploader</h1>
 
-    <div id="drop-area">
-        <form class="my-form">
-            <p>Drag your files onto the dashed region or click below to upload. (Max 5MB)</p>
-            <input type="file" id="fileElem" multiple accept='image/*' onchange='handleFiles(this.files)'>
-            <label id="uploadBtn" class="button" for="fileElem">Add file(s)</label>
-        </form>
-        <div id="filesUploadedEl"></div>
-        <div id="uploadFilesList"></div>
-        <div id="statusText"></div>
-        <div id="errorMessages"></div>
+    <div style="width: 480px; margin: auto">    
+        <div id="drop-area">
+            <form class="my-form">
+                <p>Drag your files onto the dashed region or click below to upload. (Max 5MB)</p>
+                <input type="file" id="fileElem" multiple onchange='handleFiles(this.files)'>
+                <label id="uploadBtn" class="button" for="fileElem">Add file(s)</label>
+            </form>
+            <div id="filesUploadedEl"></div>
+            <div id="uploadFilesList"></div>
+            <div id="statusText"></div>
+            <div id="errorMessages"></div>
+        </div>
     </div>
+
 
     <script src="scripts.js"></script>
 </body>
